@@ -70,10 +70,6 @@ cru l
    ```sh
    cat /jffs/syslog.log | grep "WireGuard-WOL"
    ``` 
-- Adjust Check Frequency: For faster response, modify the scheduled task (e.g., to check every 30 seconds):
-  ```sh
-  cru a CheckWireGuard "*/30 * * * * * /jffs/scripts/check-wireguard.sh"
-  ```
 
 ## Limitations and Improvements
 - **Latency**: The scheduled task checks every minute, which may introduce up to 60 seconds of delay.

@@ -72,10 +72,6 @@ which cru
     ```sh
     cat /jffs/syslog.log | grep "WireGuard-WOL"
     ```
-- **調整檢查頻率**：如果需要更快響應，可修改定時任務（例如每 30 秒檢查一次）：
-    ```sh
-    cru a CheckWireGuard "*/30 * * * * * /jffs/scripts/check-wireguard.sh"
-    ```
 
 
 ## 限制與改進
