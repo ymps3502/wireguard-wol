@@ -1,85 +1,82 @@
-# WireGuard 自動喚醒方案
+# WireGuard Auto-Wake Solution
 
-## 概述
-此專案實現了一個自動喚醒方案，適用於支援特定指令的路由器。當外部網絡發起 WireGuard 連線請求（預設端口 51820）時，路由器會檢測流量並發送 WOL（Wake-on-LAN）封包喚醒目標設備（例如 Unraid 伺服器）。
+## Overview
+This project implements an auto-wake solution for routers that support specific commands. When an external network initiates a WireGuard connection request (default port 51820), the router detects the traffic and sends a WOL (Wake-on-LAN) packet to wake the target device (e.g., an Unraid server).
 
-## 環境需求
-- **路由器**：需支援 SSH 並具備以下指令：
-  - `netstat-nat`：用於檢測 WireGuard 流量。
-  - `ether-wake`：用於發送 WOL 封包。
-  - `logger`：用於記錄日誌（可選，若無則需修改腳本）。
-  - `cru`：用於設置定時任務。
-- **目標設備**：支援 WOL 的設備（例如 Unraid 伺服器）。
-- **WireGuard 端口**：預設為 51820（可根據實際情況修改）。
+## Requirements
+- **Router**: Must support SSH and the following commands:
+  - `netstat-nat`: Used to detect WireGuard traffic.
+  - `ether-wake`: Used to send WOL packets.
+  - `logger`: Used to log messages (optional; if unavailable, the script needs modification).
+  - `cru`: Used to set up scheduled tasks.
+- **Target Device**: A device that supports WOL (e.g., an Unraid server).
+- **WireGuard Port**: Default is 51820 (can be modified as needed).
 
-## 檔案結構
-- `wol.sh`：發送 WOL 封包的腳本。
-- `check-wireguard.sh`：檢測 WireGuard 流量並觸發 WOL 的腳本。
-- `README.md`：說明文件。
+## File Structure
+- `wol.sh`: Script to send WOL packets.
+- `check-wireguard.sh`: Script to detect WireGuard traffic and trigger WOL.
+- `README.md`: Documentation file.
 
-## 建置方式
+## Setup Instructions
 
-### 1. 啟用 SSH 並連接到路由器
-1. 進入路由器 Web 介面，啟用 SSH 功能（通常在 **Administration > System** 中）。
-2. 使用 SSH 客戶端連接到路由器：
-    ```ssh
+### 1. Enable SSH and Connect to the Router
+1. Access the router's web interface and enable SSH (typically under **Administration > System**).
+2. Connect to the router using an SSH client:
+    ```sh
     ssh username@routerIP
-    ```
 
-### 2. 設置 WireGuard 端口轉發
-在路由器 Web 介面中，設置 NAT 轉發，將外部 51820 端口（UDP）轉發到目標設備（例如 `192.168.1.123:51820`）。
+### 2. Configure WireGuard Port Forwarding
+In the router's web interface, set up NAT forwarding to forward external port 51820 (UDP) to the target device (e.g., 192.168.1.123:51820).
 
-### 3. 確認必要指令可用
-檢查路由器是否支援以下指令：
+### 3. Verify Required Commands
+Ensure the router supports the following commands:
 ```sh
 which netstat-nat
 which ether-wake
 which logger
 which cru
 ```
-如果缺少任一指令，需考慮更換固件（例如刷 OpenWrt）或使用其他設備。
+If any command is missing, consider replacing the firmware (e.g., with OpenWrt) or using another device.
 
-### 4. 複製腳本到路由器
-1. 將 `wol.sh` 和 `check-wireguard.sh` 複製到 `/jffs/scripts/` 目錄：
-    ```sh
-    echo -e '#!/bin/sh\nMAC="[your mac address]"\n/usr/bin/ether-wake -b -i br0 $MAC' > /jffs/scripts/wol.sh
-    echo -e '#!/bin/sh\n# 檢查 netstat-nat 中是否有 WireGuard 流量\nif netstat-nat | grep -q "51820"; then\n    /jffs/scripts/wol.sh\n    logger -t "WireGuard-WOL" "檢測到流量，發送 WOL 封包"\nfi' > /jffs/scripts/check-wireguard.sh
-    ```
-    - 將 `[your mac address]` 替換為實際 MAC 地址（例如 `00:11:22:33:44:55`）。
-    - 如果網絡接口不是 `br0`，需調整 `wol.sh` 中的 `-i br0`（例如 `-i eth0`）。
-2. 設置腳本權限：
-    ```sh
-    chmod +x /jffs/scripts/wol.sh
-    chmod +x /jffs/scripts/check-wireguard.sh
-    ```
+### 4. Copy Scripts to the Router
+1. Copy wol.sh and check-wireguard.sh to the /jffs/scripts/ directory:
+  ```sh
+  echo -e '#!/bin/sh\nMAC="[your mac address]"\n/usr/bin/ether-wake -b -i br0 $MAC' > /jffs/scripts/wol.sh
+  echo -e '#!/bin/sh\n# Check for WireGuard traffic in netstat-nat\nif netstat-nat | grep -q "51820"; then\n    /jffs/scripts/wol.sh\n    logger -t "WireGuard-WOL" "Traffic detected, sending WOL packet"\nfi' > /jffs/scripts/check-wireguard.sh
+  ```
+- Replace [your mac address] with the actual MAC address (e.g., 00:11:22:33:44:55).
+- If the network interface is not br0, adjust the -i br0 in wol.sh (e.g., to -i eth0).
+2. Set script permissions:
+  ```sh
+  chmod +x /jffs/scripts/wol.sh
+  chmod +x /jffs/scripts/check-wireguard.sh
+  ```
 
-### 5. 設置定時任務
-1. 使用 `cru` 設置定時任務，每分鐘檢查 WireGuard 流量：
-    ```sh
-    cru a CheckWireGuard "* * * * * /jffs/scripts/check-wireguard.sh"
-    ```
-2. 檢查定時任務：
-    ```sh
-    cru l
-    ```
+### 5. Set Up a Scheduled Task
+Use cru to schedule a task that checks for WireGuard traffic every minute:
+```sh
+cru a CheckWireGuard "* * * * * /jffs/scripts/check-wireguard.sh"
+```
+Verify the scheduled task:
+```sh
+cru l
+```
 
+### 6. Test Auto-Wake
+1. Put the target device into sleep mode.
+2. Connect to WireGuard from an external network.
+3. Wait for one minute and check if the target device wakes up.
+4. Check the logs:
+   ```sh
+   cat /jffs/syslog.log | grep "WireGuard-WOL"
+   ``` 
+- Adjust Check Frequency: For faster response, modify the scheduled task (e.g., to check every 30 seconds):
+  ```sh
+  cru a CheckWireGuard "*/30 * * * * * /jffs/scripts/check-wireguard.sh"
+  ```
 
-### 6. 測試自動喚醒
-1. 讓目標設備進入休眠
-2. 從外部網絡連接到 WireGuard。
-3. 等待一分鐘，檢查目標設備是否被喚醒。
-4. 檢查日誌：
-    ```sh
-    cat /jffs/syslog.log | grep "WireGuard-WOL"
-    ```
-- **調整檢查頻率**：如果需要更快響應，可修改定時任務（例如每 30 秒檢查一次）：
-    ```sh
-    cru a CheckWireGuard "*/30 * * * * * /jffs/scripts/check-wireguard.sh"
-    ```
-
-
-## 限制與改進
-- **延遲**：定時任務每分鐘檢查一次，可能有最多 60 秒的延遲。
-- **固件限制**：如果路由器不支援 `netstat-nat` 或其他必要指令，可考慮：
-- 使用其他設備（例如 Raspberry Pi）監控流量。
-- 刷 OpenWrt，提供完整的流量監控工具（例如 `tcpdump`）。
+## Limitations and Improvements
+- **Latency**: The scheduled task checks every minute, which may introduce up to 60 seconds of delay.
+- **Firmware Limitations**: If the router does not support `netstat-nat` or other required commands, consider:
+  - Using another device (e.g., a Raspberry Pi) to monitor traffic.
+  - Flashing OpenWrt for full traffic monitoring tools (e.g., `tcpdump`).
